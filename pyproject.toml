@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "prompt-constraint-auditor"
-version = "1.0.0"
+version = "1.1.0"
 description = "Extract prompt constraints, surface assumptions, and flag possible internal conflicts."
 readme = "README.md"
 requires-python = ">=3.10"

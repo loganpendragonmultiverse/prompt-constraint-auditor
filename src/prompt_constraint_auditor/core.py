@@ -15,30 +15,67 @@ def _require(data: dict[str, Any], key: str) -> Any:
     return value
 
 
+def _span(prompt: str, start: int, end: int) -> dict[str, int]:
+    """Zero-based Unicode offsets; one-based line/columns; end is exclusive."""
+    return {
+        "start": start,
+        "end": end,
+        "start_line": prompt.count("\n", 0, start) + 1,
+        "start_column": start - prompt.rfind("\n", 0, start),
+        "end_line": prompt.count("\n", 0, end) + 1,
+        "end_column": end - prompt.rfind("\n", 0, end),
+    }
+
+
 def _prompt_constraints(data: dict[str, Any]) -> dict[str, Any]:
     prompt = str(_require(data, "prompt"))
-    sentences = [item.strip() for item in re.split("(?<=[.!?])\\s+|\\n+", prompt) if item.strip()]
+    # Split by the existing punctuation/newline rules, retaining source offsets.
+    sentences = []
+    cursor = 0
+    for boundary in re.finditer(r"(?<=[.!?])\s+|\n+|\Z", prompt):
+        raw = prompt[cursor : boundary.start()]
+        sentence = raw.strip()
+        if sentence:
+            offset = cursor + len(raw) - len(raw.lstrip())
+            sentences.append((sentence, offset, offset + len(sentence)))
+        cursor = boundary.end()
     markers = re.compile(
-        "\\b(must|must not|should|should not|do not|never|always|only|avoid|required|cannot|can't)\\b",
+        r"\b(must not|should not|do not|must|should|never|always|only|avoid|required|cannot|can't)\b",
         re.IGNORECASE,
     )
-    constraints: list[dict[str, Any]] = [
-        {
-            "text": sentence,
-            "strength": "hard"
-            if re.search(
-                "\\b(must|must not|do not|never|always|only|required|cannot|can't)\\b",
-                sentence,
-                re.IGNORECASE,
-            )
-            else "soft",
-            "negative": bool(
-                re.search("\\b(not|never|avoid|cannot|can't)\\b", sentence, re.IGNORECASE)
-            ),
-        }
-        for sentence in sentences
-        if markers.search(sentence)
-    ]
+    constraints: list[dict[str, Any]] = []
+    for sentence, start, end in sentences:
+        cues = list(markers.finditer(sentence))
+        if not cues:
+            continue
+        constraints.append(
+            {
+                "id": f"constraint-{len(constraints) + 1:06d}",
+                "text": sentence,
+                "span": _span(prompt, start, end),
+                "cues": [
+                    {
+                        "text": cue.group(),
+                        "span": _span(prompt, start + cue.start(), start + cue.end()),
+                    }
+                    for cue in cues
+                ],
+                "strength": "hard"
+                if re.search(
+                    r"\b(must|do not|never|always|only|required|cannot|can't)\b",
+                    sentence,
+                    re.IGNORECASE,
+                )
+                else "soft",
+                "negative": bool(
+                    re.search(
+                        r"\b(not|never|avoid|cannot|can't)\b",
+                        sentence,
+                        re.IGNORECASE,
+                    )
+                ),
+            }
+        )
     conflicts = []
     for left, right in combinations(constraints, 2):
         left_terms = set(re.findall("[a-z]{4,}", str(left["text"]).casefold())) - {
@@ -61,13 +98,15 @@ def _prompt_constraints(data: dict[str, Any]) -> dict[str, Any]:
             conflicts.append(
                 {
                     "left": left["text"],
+                    "left_id": left["id"],
                     "right": right["text"],
+                    "right_id": right["id"],
                     "shared_terms": sorted(left_terms & right_terms),
                 }
             )
     assumptions = [
         sentence
-        for sentence in sentences
+        for sentence, _, _ in sentences
         if re.search("\\b(assume|probably|likely|usually|by default)\\b", sentence, re.IGNORECASE)
     ]
     return {
