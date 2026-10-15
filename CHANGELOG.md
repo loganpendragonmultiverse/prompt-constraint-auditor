@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0 - Unreleased
+## 1.1.0 - 2026-10-15
 
 - Attach deterministic IDs and exact Unicode source/cue spans to each constraint occurrence.
 - Reference constraint IDs from conflict records, including repeated wording.
