@@ -4,6 +4,10 @@
 
 Extract prompt constraints, surface assumptions, and flag possible internal conflicts. The command uses explicit UTF-8 JSON input and produces reviewable JSON or Markdown output.
 
+## Version 1.1.1
+
+This documentation correction updates release wording and packaged release history. Library behavior is unchanged from version 1.1.0.
+
 ## Three-minute start
 
 ```bash
