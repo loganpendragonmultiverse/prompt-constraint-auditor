@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.2 - 2026-10-19
+
+- Reject malformed JSON input shapes instead of stringifying values or crashing.
+- Create report files exclusively, refuse symlink destinations and return a clean error for closed stdout pipes.
+- Include release handoff documents and their license with the installed package.
+
 ## 1.1.1 - 2026-10-16
 
 - Correct release wording and include dated release history and development notes in source distributions.
