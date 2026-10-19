@@ -8,13 +8,6 @@ from typing import Any
 PROJECT = "prompt-constraint-auditor"
 
 
-def _require(data: dict[str, Any], key: str) -> Any:
-    value = data.get(key)
-    if value is None or value == "" or value == []:
-        raise ValueError(f"{key} is required")
-    return value
-
-
 def _span(prompt: str, start: int, end: int) -> dict[str, int]:
     """Zero-based Unicode offsets; one-based line/columns; end is exclusive."""
     return {
@@ -28,7 +21,9 @@ def _span(prompt: str, start: int, end: int) -> dict[str, int]:
 
 
 def _prompt_constraints(data: dict[str, Any]) -> dict[str, Any]:
-    prompt = str(_require(data, "prompt"))
+    prompt = data.get("prompt")
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise ValueError("prompt must be a nonempty string")
     # Split by the existing punctuation/newline rules, retaining source offsets.
     sentences = []
     cursor = 0
@@ -121,6 +116,8 @@ def _prompt_constraints(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def analyze(data: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        raise TypeError("input must be a JSON object")
     return {"version": 1, "project": PROJECT, **_prompt_constraints(data)}
 
 
